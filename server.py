@@ -63,7 +63,7 @@ signal.signal(signal.SIGINT, sigint_handler)
 # TODO: put your application logic here!
 # Read login credentials for all the users
 # Read secret data of all the users
-database = {}
+user = {}
 with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
     for i in passwords.readlines():
         [user_i, password] = i.split()
@@ -71,7 +71,7 @@ with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
         for j in secrets.readlines():
             [user_j, secret] = j.split()
             if user_i == user_j:
-                database[user_i] = {
+                user[user_i] = {
                     'password': password,
                     'secret': secret
                 }
@@ -104,7 +104,22 @@ while True:
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
     # html_content_to_send = logout_page
-    
+
+    # username-password authentication
+    if body:
+        credentials = {}
+        for field in body.split('&'):
+            field = field.split('=')
+            if len(field) == 2:
+                credentials[field[0]] = field[1]
+        username = credentials.get('username')
+        password = credentials.get('password')
+        if username in user and user[username]['password'] == password:
+            html_content_to_send = success_page + user[username]['secret']
+        else:
+            html_content_to_send = bad_creds_page
+
+
     # (2) `headers_to_send` => add any additional headers
     # you'd like to send the client?
     # Right now, we don't send any extra headers.
@@ -115,10 +130,10 @@ while True:
     response += headers_to_send
     response += 'Content-Type: text/html\r\n\r\n'
     response += html_content_to_send
-    print_value('response', response)    
+    print_value('response', response)
     client.send(response)
     client.close()
-    
+
     print "Served one request/connection!"
     print
 
