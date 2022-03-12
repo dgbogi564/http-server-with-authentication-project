@@ -63,6 +63,19 @@ signal.signal(signal.SIGINT, sigint_handler)
 # TODO: put your application logic here!
 # Read login credentials for all the users
 # Read secret data of all the users
+database = {}
+with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
+    for i in passwords.readlines():
+        [user_i, password] = i.split()
+        secrets.seek(0)
+        for j in secrets.readlines():
+            [user_j, secret] = j.split()
+            if user_i == user_j:
+                database[user_i] = {
+                    'password': password,
+                    'secret': secret
+                }
+                break
 
 
 
