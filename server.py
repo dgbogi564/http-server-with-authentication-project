@@ -1,6 +1,8 @@
 import signal
 import socket
 import sys
+import random
+import re
 
 # Read a command line argument for the port where the server
 # must run.
@@ -64,6 +66,7 @@ signal.signal(signal.SIGINT, sigint_handler)
 # Read login credentials for all the users
 # Read secret data of all the users
 user = {}
+cookies = {}
 with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
     for i in passwords.readlines():
         [user_i, password] = i.split()
@@ -73,7 +76,8 @@ with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
             if user_i == user_j:
                 user[user_i] = {
                     'password': password,
-                    'secret': secret
+                    'secret': secret,
+                    'cookies': '',
                 }
                 break
 
@@ -92,6 +96,8 @@ while True:
     print_value('headers', headers)
     print_value('entity body', body)
 
+    html_content_to_send = login_page
+
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
 
@@ -99,14 +105,16 @@ while True:
     # (1) `html_content_to_send` => add the HTML content you'd
     # like to send to the client.
     # Right now, we just send the default login page.
-    html_content_to_send = login_page
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
     # html_content_to_send = logout_page
-
-    # username-password authentication
-    if body:
+    headers_to_send = ''
+    cookie = re.search('Set-Cookie: token=([0-9]+)', headers)
+    if cookie:
+        username = cookies.get(int(cookie.group(0)))
+        html_content_to_send = success_page + user[username]['secret']
+    elif body:
         credentials = {}
         for field in body.split('&'):
             field = field.split('=')
@@ -115,6 +123,9 @@ while True:
         username = credentials.get('username')
         password = credentials.get('password')
         if username in user and user[username]['password'] == password:
+            cookie = random.getrandbits(64)
+            headers_to_send = 'Set-Cookie: token=' + str(cookie) + '\r\n'
+            cookies = {cookie: username}
             html_content_to_send = success_page + user[username]['secret']
         else:
             html_content_to_send = bad_creds_page
@@ -123,7 +134,7 @@ while True:
     # (2) `headers_to_send` => add any additional headers
     # you'd like to send the client?
     # Right now, we don't send any extra headers.
-    headers_to_send = ''
+
 
     # Construct and send the final response
     response  = 'HTTP/1.1 200 OK\r\n'
