@@ -1,6 +1,8 @@
 import signal
 import socket
 import sys
+import random
+import re
 
 # Read a command line argument for the port where the server
 # must run.
@@ -64,6 +66,7 @@ signal.signal(signal.SIGINT, sigint_handler)
 # Read login credentials for all the users
 # Read secret data of all the users
 user = {}
+cookies = {}
 with open('passwords.txt') as passwords, open('secrets.txt') as secrets:
     for i in passwords.readlines():
         [user_i, password] = i.split()
@@ -92,20 +95,31 @@ while True:
     print_value('headers', headers)
     print_value('entity body', body)
 
+    html_content_to_send = login_page
+    
     # TODO: Put your application logic here!
     # Parse headers and body and perform various actions
-
+    for h in headers.split('\n'):
+        words = h.split(" ")
+        if words[0] == 'Cookie:':
+            token = words[1].split('=')
+            if int(token[1]) in cookies:
+                username = cookies.get(int(token[1]))
+                html_content_to_send = success_page + user[username]['secret']
+            else:
+                html_content_to_send = bad_creds_page
+                
     # You need to set the variables:
     # (1) `html_content_to_send` => add the HTML content you'd
     # like to send to the client.
     # Right now, we just send the default login page.
-    html_content_to_send = login_page
     # But other possibilities exist, including
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
     # html_content_to_send = logout_page
 
     # username-password authentication
+    headers_to_send = ''
     if body:
         credentials = {}
         for field in body.split('&'):
@@ -116,6 +130,9 @@ while True:
         password = credentials.get('password')
         if username in user and user[username]['password'] == password:
             html_content_to_send = success_page + user[username]['secret']
+            rand_val = random.getrandbits(64)
+            headers_to_send = 'Set-Cookie: token=' + str(rand_val) + '\r\n'
+            cookies = { rand_val: username }
         else:
             html_content_to_send = bad_creds_page
 
@@ -123,7 +140,7 @@ while True:
     # (2) `headers_to_send` => add any additional headers
     # you'd like to send the client?
     # Right now, we don't send any extra headers.
-    headers_to_send = ''
+    
 
     # Construct and send the final response
     response  = 'HTTP/1.1 200 OK\r\n'
