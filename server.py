@@ -108,36 +108,40 @@ while True:
     # html_content_to_send = success_page + <secret>
     # html_content_to_send = bad_creds_page
     # html_content_to_send = logout_page
-    cookie = re.search('Set-Cookie: token=([0-9]+)', headers)
-    if cookie:
-        cookie = int(cookie.group(0))
-        username = cookies.get(cookie)
-        if not username:
-            html_content_to_send = bad_creds_page + user[username]['secret']
-        else:
-            html_content_to_send = success_page + user[username]['secret']
-    elif body:
-        credentials = {}
-        for field in body.split('&'):
-            field = field.split('=')
-            if len(field) == 2:
-                credentials[field[0]] = field[1]
-        username = credentials.get('username')
-        password = credentials.get('password')
-        if username in user and user[username]['password'] == password:
-            cookie = random.getrandbits(64)
-            cookies = {cookie: username}
-            html_content_to_send = success_page + user[username]['secret']
-        else:
-            html_content_to_send = bad_creds_page
+    headers_to_send = ''
+    if 'action=logout' in body:
+        headers_to_send = 'Set-Cookie: token=; expires=Thu, 01 Jan 1970 00:00:00 GMT\r\n'
+    else:
+        cookie = re.findall('Cookie: token=([0-9]+)', headers)
+        if cookie:
+            cookie = int(cookie[0])
+            username = cookies.get(cookie)
+            if not username:
+                cookie = ''
+                html_content_to_send = bad_creds_page
+            else:
+                html_content_to_send = success_page + user[username]['secret']
+        if body:
+            credentials = {}
+            for field in body.split('&'):
+                field = field.split('=')
+                if len(field) == 2:
+                    credentials[field[0]] = field[1]
+            username = credentials.get('username')
+            password = credentials.get('password')
+            if username in user and user[username]['password'] == password:
+                cookie = random.getrandbits(64)
+                cookies = {cookie: username}
+                headers_to_send = 'Set-Cookie: token=' + str(cookie) + '\r\n'
+                html_content_to_send = success_page + user[username]['secret']
+            else:
+                html_content_to_send = bad_creds_page
 
 
     # (2) `headers_to_send` => add any additional headers
     # you'd like to send the client?
     # Right now, we don't send any extra headers.
-    headers_to_send = ''
-    if cookie:
-        headers_to_send = 'Set-Cookie: token=' + str(cookie) + '\r\n'
+
 
     # Construct and send the final response
     response  = 'HTTP/1.1 200 OK\r\n'
