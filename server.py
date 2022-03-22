@@ -121,7 +121,7 @@ while True:
                 html_content_to_send = bad_creds_page
             else:
                 html_content_to_send = success_page + user[username]['secret']
-        if body:
+        elif body:
             credentials = {}
             for field in body.split('&'):
                 field = field.split('=')
@@ -129,9 +129,11 @@ while True:
                     credentials[field[0]] = field[1]
             username = credentials.get('username')
             password = credentials.get('password')
-            if username in user and user[username]['password'] == password:
+            if not username or not password:
+                html_content_to_send = bad_creds_page
+            elif username in user and (user[username]['password'] == password):
                 cookie = random.getrandbits(64)
-                cookies = {cookie: username}
+                cookies[cookie] = username
                 headers_to_send = 'Set-Cookie: token=' + str(cookie) + '\r\n'
                 html_content_to_send = success_page + user[username]['secret']
             else:
